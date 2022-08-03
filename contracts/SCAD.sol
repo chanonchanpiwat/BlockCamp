@@ -3,20 +3,17 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
-import "@openzeppelin/contracts/access/Roles.sol";
-
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./ISCAD.sol";
 
 
-contract SCAD is ISCAD, IERC20 {
-    using Roles for Roles.Role;
+contract SCAD is IERC20, AccessControl {
     IERC20 token;
     mapping(address => uint) balanceOf;
     mapping(uint => Proposal) proposalQuene;
-
-    Roles.Role private _proposer;
-    Roles.Role private _approver;
+    bytes32 public constant PROPOSER_ROLE = keccak256("PROPOSER");
+    bytes32 public constant APPROVER_ROLE = keccak256("APPROVER");
 
     enum Status {
         pending,
@@ -36,11 +33,11 @@ contract SCAD is ISCAD, IERC20 {
     constructor(address[] memory proposer, address[] memory approver, address _token) {
         token = IERC20(_token);
         for (uint256 i = 0; i < proposer.length; ++i) {
-            _proposer.add(proposer[i]);
+            _setupRole(PROPOSER_ROLE, proposer[i]);
         }
 
         for (uint256 i = 0; i < approver.length; ++i) {
-            _approver.add(approver[i]);
+            _setupRole(PROPOSER_ROLE, approver[i]);
         }
     }
 
@@ -62,7 +59,7 @@ contract SCAD is ISCAD, IERC20 {
         
     }
 
-    function propose(address client, bytes memory _data, uint _period, uint _amount) external view onlyProposer override{
+    function propose(address client, uint _period, uint _amount) external view onlyProposer override{
         uint proposalID = uint(keccak256(abi.encodePacked(client,_data,_period)));
         proposalQuene[proposalID] = Proposal({
             proposer: client,
