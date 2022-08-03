@@ -3,12 +3,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./ISCAD.sol";
+
 
 
 contract SCAD is AccessControl {
+
+    event Log(address indexed sender, uint ID);
+
     IERC20 token;
     mapping(address => uint) balanceOf;
     mapping(uint => Proposal) proposalQuene;
@@ -57,11 +59,13 @@ contract SCAD is AccessControl {
         require(token.allowance(msg.sender ,address(this)) >= _amount,"Contract must be approved");
         token.transferFrom(msg.sender, address(this), _amount);
         
+        
     }
 
-    function propose(address client, bytes calldata _data, uint _period, uint _amount) external view onlyProposer override{
-        uint proposalID = uint(keccak256(abi.encodePacked(client,_data,_period)));
-        proposalQuene[proposalID] = Proposal({
+    function propose(address client, string memory func, uint _period, uint _amount) external onlyProposer {
+        bytes memory _data = abi.encodePacked(func);
+        uint proposalId = uint(keccak256(abi.encodePacked(client,_data,_period)));
+        proposalQuene[proposalId] = Proposal({
             proposer: client,
             data: _data,
             start: block.timestamp,
@@ -69,6 +73,7 @@ contract SCAD is AccessControl {
             state: Status.pending,
             bounty: _amount
         });
+        emit Log(msg.sender,proposalId);
 
     }
 
@@ -81,6 +86,7 @@ contract SCAD is AccessControl {
         proposal.bounty = _amount;
         proposal.start = block.timestamp;
         proposal.state = Status.aprroved;
+        emit Log(msg.sender, proposalId);
     }
 
 

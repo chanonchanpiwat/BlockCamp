@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-
 interface ISCAD {
 
-    event Propose(address indexed proposer, bytes32 _data, uint _period, bytes32 _package, uint proposalId);
-    event Approve(address indexed governer, uint proposalId);
-    event Reject(address indexed governer, uint proposalId);
-    event Claim(address[] indexed recipients, uint proposalId);
-    
+    event Log(address indexed sender, uint ID);
+    event Propose(address indexed sender,)
+
+    IERC20 token;
+    mapping(address => uint) balanceOf;
+    mapping(uint => Proposal) proposalQuene;
+    bytes32 public constant PROPOSER_ROLE = keccak256("PROPOSER");
+    bytes32 public constant APPROVER_ROLE = keccak256("APPROVER");
+
     enum Status {
         pending,
         aprroved,
@@ -17,19 +20,92 @@ interface ISCAD {
 
     struct Proposal {
         address proposer;
-        bytes32 data;
+        bytes data;
         uint start;
-        uint256 period;
+        uint period;
         Status state;
-        uint8 bounty;
+        uint bounty;
     }
 
-    function propose(address client, bytes32 _data, uint _period, uint _amount) external view;
+    constructor(address[] memory proposer, address[] memory approver, address _token) {
+        token = IERC20(_token);
+        for (uint256 i = 0; i < proposer.length; ++i) {
+            _setupRole(PROPOSER_ROLE, proposer[i]);
+        }
 
-    function reject(uint proposalId, uint _amount) external view;
+        for (uint256 i = 0; i < approver.length; ++i) {
+            _setupRole(PROPOSER_ROLE, approver[i]);
+        }
+    }
 
-    function approve(uint propsalId, uint _amount) external view;
 
-    function claimProposalReward (address[] calldata recipients, uint proposalId, uint[] calldata weight, uint propsalId) external view;
+    modifier onlyProposer {
+      require(hasRole(PROPOSER_ROLE, msg.sender),"Proposer role is required");
+      _;
+   }
+
+   modifier onlyApprover {
+      require(hasRole(APPROVER_ROLE, msg.sender),"Approver role is required");
+      _;
+   }
+
+    function _deposit(uint _amount) internal {
+        require(token.balanceOf(msg.sender) >= _amount, "Insufficient token balance");
+        require(token.allowance(msg.sender ,address(this)) >= _amount,"Contract must be approved");
+        token.transferFrom(msg.sender, address(this), _amount);
+        
+        
+    }
+
+    function propose(address client, string memory func, uint _period, uint _amount) external onlyProposer {
+        bytes memory _data = abi.encodePacked(func);
+        uint proposalId = uint(keccak256(abi.encodePacked(client,_data,_period)));
+        proposalQuene[proposalId] = Proposal({
+            proposer: client,
+            data: _data,
+            start: block.timestamp,
+            period: _period,
+            state: Status.pending,
+            bounty: _amount
+        });
+        emit Log(msg.sender,proposalId);
+
+    }
+
+
+    function approve(uint proposalId, uint _amount) external {
+        Proposal storage proposal = proposalQuene[proposalId];
+        require(proposal.proposer == msg.sender, "Can only approved your proposal");
+        _deposit(proposal.bounty);
+        proposal = proposalQuene[proposalId];
+        proposal.bounty = _amount;
+        proposal.start = block.timestamp;
+        proposal.state = Status.aprroved;
+        emit Log(msg.sender, proposalId);
+    }
+
+
+    function claimProposalReward(address[] calldata recipients, uint proposalId) external onlyApprover {
+        require(proposalQuene[proposalId].start <= block.timestamp + proposalQuene[proposalId].period,"Out of time");
+        require(proposalQuene[proposalId].state == Status.aprroved,"Proposal must be approved");
+        uint reward = proposalQuene[proposalId].bounty/recipients.length;
+        for(uint i=0; i < recipients.length; i++){
+            balanceOf[recipients[i]] += reward;
+        }
+    }
+
+    function withDraw(uint _amount) external {
+        require(balanceOf[msg.sender] >= _amount);
+        balanceOf[msg.sender] -= _amount;
+        token.transfer(msg.sender, _amount);
+    }
+
+    function refund(uint proposalId) external {
+        Proposal storage proposal = proposalQuene[proposalId];
+        require(proposal.proposer == msg.sender, "Can only approved your proposal");
+        require(proposal.start + proposal.period > block.timestamp,"Your contract are under audited");
+        token.transfer(msg.sender, proposal.bounty);
+
+    }
 
 }
