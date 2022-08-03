@@ -74,9 +74,8 @@ contract SCAD is AccessControl {
 
 
     function approve(uint proposalId, uint _amount) external {
-        require(proposalQuene[proposalId], "Proposal does not exist");
         Proposal storage proposal = proposalQuene[proposalId];
-        require(proposal.proposer = msg.sender, "Can only approved your proposal");
+        require(proposal.proposer == msg.sender, "Can only approved your proposal");
         _deposit(proposal.bounty);
         proposal = proposalQuene[proposalId];
         proposal.bounty = _amount;
@@ -86,11 +85,11 @@ contract SCAD is AccessControl {
 
 
     function claimProposalReward(address[] calldata recipients, uint proposalId) external onlyApprover {
-        require(proposalQuene[proposalId].start = block.timestamp + proposalQuene[proposalId].period,"Out of time");
-        require(proposalQuene[proposalId].state = 1,"Proposal must be approved");
-        uint reward = proposalQuene[proposalId].bounty/recipients.lenght;
-        for(uint i=0; i < recipients.lenght; i++){
-            recipients[i] += reward;
+        require(proposalQuene[proposalId].start <= block.timestamp + proposalQuene[proposalId].period,"Out of time");
+        require(proposalQuene[proposalId].state == Status.aprroved,"Proposal must be approved");
+        uint reward = proposalQuene[proposalId].bounty/recipients.length;
+        for(uint i=0; i < recipients.length; i++){
+            balanceOf[recipients[i]] += reward;
         }
     }
 
@@ -101,9 +100,8 @@ contract SCAD is AccessControl {
     }
 
     function refund(uint proposalId) external {
-        require(proposalQuene[proposalId], "Proposal does not exist");
         Proposal storage proposal = proposalQuene[proposalId];
-        require(proposal.proposer = msg.sender, "Can only approved your proposal");
+        require(proposal.proposer == msg.sender, "Can only approved your proposal");
         require(proposal.start + proposal.period > block.timestamp,"Your contract are under audited");
         token.transfer(msg.sender, proposal.bounty);
 
