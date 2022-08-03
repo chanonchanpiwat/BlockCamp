@@ -18,16 +18,17 @@ interface ISCAD {
     struct Proposal {
         address proposer;
         bytes32 data;
+        uint start;
         uint256 period;
         Status state;
         uint8 bounty;
     }
 
-    function propose(bytes32 _data, uint _period, bytes32 _package) external view;
+    function propose(address client, bytes32 _data, uint _period, uint _amount) external view;
 
-    function reject(uint proposalId) external view;
+    function reject(uint proposalId, uint _amount) external view;
 
-    function approve(uint propsalId) external view;
+    function approve(uint propsalId, uint _amount) external view;
 
     function claimProposalReward (address[] calldata recipients, uint proposalId, uint[] calldata weight, uint propsalId) external view;
 
