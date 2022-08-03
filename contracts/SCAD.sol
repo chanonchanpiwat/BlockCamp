@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./ISCAD.sol";
 
 
-contract SCAD is IERC20, AccessControl {
+contract SCAD is AccessControl {
     IERC20 token;
     mapping(address => uint) balanceOf;
     mapping(uint => Proposal) proposalQuene;
@@ -43,12 +43,12 @@ contract SCAD is IERC20, AccessControl {
 
 
     modifier onlyProposer {
-      require(_proposer.has(msg.sender),"Proposer role is required");
+      require(hasRole(PROPOSER_ROLE, msg.sender),"Proposer role is required");
       _;
    }
 
    modifier onlyApprover {
-      require(_approver.has(msg.sender),"Approver role is required");
+      require(hasRole(APPROVER_ROLE, msg.sender),"Approver role is required");
       _;
    }
 
@@ -59,7 +59,7 @@ contract SCAD is IERC20, AccessControl {
         
     }
 
-    function propose(address client, bytes _data, uint _period, uint _amount) external view onlyProposer override{
+    function propose(address client, bytes calldata _data, uint _period, uint _amount) external view onlyProposer override{
         uint proposalID = uint(keccak256(abi.encodePacked(client,_data,_period)));
         proposalQuene[proposalID] = Proposal({
             proposer: client,
@@ -73,12 +73,12 @@ contract SCAD is IERC20, AccessControl {
     }
 
 
-    function approve(uint propsalId, uint _amount) external {
-        require(proposalQuene[propsalId], "Proposal does not exist");
-        proposal = proposalQuene[prosalId];
+    function approve(uint proposalId, uint _amount) external {
+        require(proposalQuene[proposalId], "Proposal does not exist");
+        Proposal storage proposal = proposalQuene[proposalId];
         require(proposal.proposer = msg.sender, "Can only approved your proposal");
         _deposit(proposal.bounty);
-        proposal = proposalQuene[prosalId];
+        proposal = proposalQuene[proposalId];
         proposal.bounty = _amount;
         proposal.start = block.timestamp;
         proposal.state = Status.aprroved;
@@ -86,9 +86,9 @@ contract SCAD is IERC20, AccessControl {
 
 
     function claimProposalReward(address[] calldata recipients, uint proposalId) external onlyApprover {
-        require(proposalQuene[prosalId].start = block.timestamp + proposalQuene[prosalId].period,"Out of time");
-        require(proposalQuene[prosalId].state = 1,"Proposal must be approved");
-        uint reward = proposalQuene[prosalId].bounty/recipients.lenght;
+        require(proposalQuene[proposalId].start = block.timestamp + proposalQuene[proposalId].period,"Out of time");
+        require(proposalQuene[proposalId].state = 1,"Proposal must be approved");
+        uint reward = proposalQuene[proposalId].bounty/recipients.lenght;
         for(uint i=0; i < recipients.lenght; i++){
             recipients[i] += reward;
         }
@@ -97,12 +97,12 @@ contract SCAD is IERC20, AccessControl {
     function withDraw(uint _amount) external {
         require(balanceOf[msg.sender] >= _amount);
         balanceOf[msg.sender] -= _amount;
-        token.transfer(msg.sender, amount);
+        token.transfer(msg.sender, _amount);
     }
 
     function refund(uint proposalId) external {
-        require(proposalQuene[propsalId], "Proposal does not exist");
-        proposal = proposalQuene[prosalId];
+        require(proposalQuene[proposalId], "Proposal does not exist");
+        Proposal storage proposal = proposalQuene[proposalId];
         require(proposal.proposer = msg.sender, "Can only approved your proposal");
         require(proposal.start + proposal.period > block.timestamp,"Your contract are under audited");
         token.transfer(msg.sender, proposal.bounty);
