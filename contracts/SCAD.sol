@@ -59,7 +59,7 @@ contract SCAD is IERC20, AccessControl {
         
     }
 
-    function propose(address client, uint _period, uint _amount) external view onlyProposer override{
+    function propose(address client, bytes _data, uint _period, uint _amount) external view onlyProposer override{
         uint proposalID = uint(keccak256(abi.encodePacked(client,_data,_period)));
         proposalQuene[proposalID] = Proposal({
             proposer: client,
