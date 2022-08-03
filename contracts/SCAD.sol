@@ -67,6 +67,7 @@ contract SCAD is ISCAD, IERC20 {
 
 
     function claimProposalReward(address[] calldata recipients, uint proposalId) external onlyOwner {
+        require(proposalQuene[prosalId].start = block.timestamp + proposalQuene[prosalId].period,"Out of time");
         require(proposalQuene[prosalId].state = 1,"Proposal must be approved");
         uint reward = proposalQuene[prosalId].bounty/recipients.lenght;
         for(uint i=0; i < recipients.lenght; i++){
