@@ -35,7 +35,6 @@ contract SCAD is ISCAD, IERC20 {
         require(token.balanceOf(msg.sender) >= _amount, "Insufficient token balance");
         require(token.allowance(msg.sender ,address(this)) >= _amount,"Contract must be approved");
         token.transferFrom(msg.sender, address(this), _amount);
-        balanceOf[msg.sender] += _amount;
         
     }
 
