@@ -9,7 +9,10 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract SCAD is AccessControl {
 
-    event Log(address indexed sender, uint ID);
+    event Propose(address indexed sender, uint proposalId);
+    event Approve(address indexed sender,uint proposalId,uint amount);
+    event Refund(address indexed sender,uint proposalId,uint amount);
+    event Reward(address[] indexed inspector, uint proposalId, uint reward);
 
     IERC20 token;
     mapping(address => uint) balanceOf;
@@ -73,7 +76,7 @@ contract SCAD is AccessControl {
             state: Status.pending,
             bounty: _amount
         });
-        emit Log(msg.sender,proposalId);
+        emit Propose(msg.sender,proposalId);
 
     }
 
@@ -86,17 +89,18 @@ contract SCAD is AccessControl {
         proposal.bounty = _amount;
         proposal.start = block.timestamp;
         proposal.state = Status.aprroved;
-        emit Log(msg.sender, proposalId);
+        emit Approve(msg.sender, proposalId, _amount);
     }
 
 
-    function claimProposalReward(address[] calldata recipients, uint proposalId) external onlyApprover {
+    function unlockReward(address[] calldata recipients, uint proposalId) external onlyApprover {
         require(proposalQuene[proposalId].start <= block.timestamp + proposalQuene[proposalId].period,"Out of time");
         require(proposalQuene[proposalId].state == Status.aprroved,"Proposal must be approved");
         uint reward = proposalQuene[proposalId].bounty/recipients.length;
         for(uint i=0; i < recipients.length; i++){
             balanceOf[recipients[i]] += reward;
         }
+        emit Reward(recipients, proposalId, reward);
     }
 
     function withDraw(uint _amount) external {
@@ -110,6 +114,7 @@ contract SCAD is AccessControl {
         require(proposal.proposer == msg.sender, "Can only approved your proposal");
         require(proposal.start + proposal.period > block.timestamp,"Your contract are under audited");
         token.transfer(msg.sender, proposal.bounty);
+        emit Refund(msg.sender, proposalId, proposal.bounty);
 
     }
 
